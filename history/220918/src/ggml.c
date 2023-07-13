@@ -531,7 +531,7 @@ const char * GGML_OP_SYMBOL[GGML_OP_COUNT] = {
 };
 
 //
-// ggml object
+// ggml object, a linked list of void object
 //
 
 struct ggml_object {
@@ -800,10 +800,10 @@ struct ggml_tensor * ggml_new_tensor_impl(
 
     size_t size_needed = 0;
 
-    if (data == NULL) {
+    if (data == NULL) {//always true for 1D case
         size_needed += GGML_TYPE_SIZE[type];
         for (int i = 0; i < n_dims; i++) {
-            size_needed *= ne[i];
+            size_needed *= ne[i];//#elements in each dimension
         }
         // align to GGML_MEM_ALIGN
         size_needed = ((size_needed + GGML_MEM_ALIGN - 1)/GGML_MEM_ALIGN)*GGML_MEM_ALIGN;
