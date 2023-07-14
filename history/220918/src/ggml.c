@@ -821,6 +821,7 @@ struct ggml_tensor * ggml_new_tensor_impl(
 
     struct ggml_object * const obj_new = (struct ggml_object *)(mem_buffer + cur_end);
 
+    //for constructing a new tensor within context memory, we simutaneously construct a ggml_object (below) and a ggml_tensor (by "results") and an array to hold all tensor elements (by "result->data")
     *obj_new = (struct ggml_object) {
         .offset = cur_end + GGML_OBJECT_SIZE,
         .size   = size_needed,
@@ -845,7 +846,7 @@ struct ggml_tensor * ggml_new_tensor_impl(
     *result = (struct ggml_tensor) {
         /*.type         =*/ type,
         /*.n_dims       =*/ n_dims,
-        /*.ne           =*/ { 1, 1, 1, 1 },
+        /*.ne           =*/ { 1, 1, 1, 1 },//4 is the current max # dims
         /*.nb           =*/ { 0, 0, 0, 0 },
         /*.op           =*/ GGML_OP_NONE,
         /*.is_param     =*/ false,

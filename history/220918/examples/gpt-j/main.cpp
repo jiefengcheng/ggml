@@ -404,10 +404,10 @@ bool gptj_eval(
     struct ggml_cgraph gf = { .n_threads = n_threads };//provided by gpt_params defined in utils.h, being 8 or less by cpu
 
     struct ggml_tensor * embd = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
-    memcpy(embd->data, embd_inp.data(), N*ggml_element_size(embd));
+    memcpy(embd->data, embd_inp.data(), N*ggml_element_size(embd));//embd_inp is the tensorized representation for all input tokens by
 
     // wte
-    struct ggml_tensor * inpL = ggml_get_rows(ctx0, model.wte, embd);
+    struct ggml_tensor * inpL = ggml_get_rows(ctx0, model.wte, embd);//still not clear about this calculation. model.wte is just get memery allocation (n_embd*n_vocab*ggml_type_size(wtype); // wte and ggml_new_tensor_2d(ctx, wtype,n_embd, n_vocab);) and contains nothing. why construct 2d tensor using first dimension of wte (n_embd) and embd (embd_inp.size())?
 
     for (int il = 0; il < n_layer; ++il) {
         struct ggml_tensor * cur;
@@ -421,7 +421,7 @@ bool gptj_eval(
                     ggml_mul(ctx0,
                         ggml_repeat(ctx0, model.layers[il].ln_1_g, cur),
                         cur),
-                    ggml_repeat(ctx0, model.layers[il].ln_1_b, cur));
+                    ggml_repeat(ctx0, model.layers[il].ln_1_b, cur));//repeat is adjustment of dur's dimension due to inpL's length or embd_inp.size() != n_ctx
         }
 
         struct ggml_tensor * inpSA = cur;
@@ -433,9 +433,10 @@ bool gptj_eval(
             struct ggml_tensor * Vcur = ggml_mul_mat(ctx0, ggml_transpose(ctx0, model.layers[il].c_attn_v_proj_w), cur);
 
             // store key and value to memory
+            // no need for q because it will use the memory of cur?
             if (N >= 1) {
-                struct ggml_tensor * k = ggml_view_1d(ctx0, model.memory_k, N*n_embd, (ggml_element_size(model.memory_k)*n_embd)*(il*n_ctx + n_past));
-                struct ggml_tensor * v = ggml_view_1d(ctx0, model.memory_v, N*n_embd, (ggml_element_size(model.memory_v)*n_embd)*(il*n_ctx + n_past));
+                struct ggml_tensor * k = ggml_view_1d(ctx0, model.memory_k, N*n_embd, (ggml_element_size(model.memory_k)*n_embd)*(il*n_ctx + n_past));//How is the way of calculating the offset?
+                struct ggml_tensor * v = ggml_view_1d(ctx0, model.memory_v, N*n_embd, (ggml_element_size(model.memory_v)*n_embd)*(il*n_ctx + n_past));//the same as above
 
                 ggml_build_forward_expand(&gf, ggml_cpy(ctx0, Kcur, k));
                 ggml_build_forward_expand(&gf, ggml_cpy(ctx0, Vcur, v));
