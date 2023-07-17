@@ -620,6 +620,7 @@ void ggml_print_objects(const struct ggml_context * ctx) {
     GGML_PRINT("%s: --- end ---\n", __func__);
 }
 
+//the total # of elements in a provided tensor
 int ggml_nelements(const struct ggml_tensor * tensor) {
     static_assert(GGML_MAX_DIMS == 4, "GGML_MAX_DIMS is not 4 - update this function");
 
@@ -3589,7 +3590,10 @@ void ggml_compute_forward_transpose(
     UNUSED(src0);
 }
 
-// ggml_compute_forward_get_rows
+// ggml_compute_forward_get_rows to compute integer array indices wte[inputs] # [n_seq] -> [n_seq, n_embd]
+//For illustration, input 1st 2-d tensor of a*b and 2nd 1-d tensor of c, the output is a 2-d tensor of c*b.  
+//Each (the j-th) element in the i-th row of the output is the j-th fp16 element of a certain row in the 1st 2-d tensor with the certain way of calculation.
+//that way of calculation for getting that index of the row of the 1st tensor is based on the i-th element value of the 2nd tensor (copy the entire row to the i-th row of output)
 
 void ggml_compute_forward_get_rows_f16(
         const struct ggml_compute_params * params,
@@ -3602,17 +3606,21 @@ void ggml_compute_forward_get_rows_f16(
         return;
     }
 
-    const int nc = src0->ne[0];
-    const int nr = ggml_nelements(src1);
+    const int nc = src0->ne[0];//number of column elements (from a single row in the src0 tensor) for one row as one output element 
+    const int nr = ggml_nelements(src1);//number of row. in this case, the number of output elements
 
     assert( dst->ne[0] == nc);
     assert( dst->ne[1] == nr);
     assert(src0->nb[0] == sizeof(ggml_fp16_t));
 
     for (int i = 0; i < nr; ++i) {
-        const int r = ((int32_t *) src1->data)[i];
+        const int r = ((int32_t *) src1->data)[i];//repeat nr times because we unfold |src1| several elements into a row
 
+        //iterate nc elements in one column (from a single row in the src0 tensor) for this row (i)
         for (int j = 0; j < nc; ++j) {
+            //firstly, locate the starting address for the r-th row in the src0 tensor, which is (char *) src0->data + r*src0->nb[1], still not knowing why r-th row is seleted
+            //then, locate the address of the j-th fp16 element, whose value is assgined to v
+            //finally, locate the starting address for the i-th row in the output tensor, which is ((char *)  dst->data + i*dst->nb[1]) and assign the j-th element in the row by v
             ggml_fp16_t v = ((ggml_fp16_t *) ((char *) src0->data + r*src0->nb[1]))[j];
             ((float *) ((char *)  dst->data + i*dst->nb[1]))[j] = ggml_fp16_to_fp32(v);
         }

@@ -78,9 +78,9 @@ struct ggml_tensor {
 
     int    n_dims;
     int    ne[GGML_MAX_DIMS]; // number of elements
-    size_t nb[GGML_MAX_DIMS]; // stride in bytes:
-                              // nb[0] = sizeof(type)
-                              // nb[1] = nb[0]   * ne[0] + padding
+    size_t nb[GGML_MAX_DIMS]; // stride in bytes (to quantify how many bytes in the last dimension given the i-th nb) :
+                              // nb[0] = sizeof(type)//the last dimension of the first dimension does not exists. This is for ini of calculation
+                              // nb[1] = nb[0]   * ne[0] + padding// 1-th nb's last dimension is the 0-th (first) dimension, which is the length of a row (think of a 2-d matrix). This will be ne[0]*sizeof(type). Moreover, the padding after the row is considered. Therefore, should note that the padding is always added at right after the ne[0]-th element and 0 to ne[0]
                               // nb[i] = nb[i-1] * ne[i-1]
 
     // compute data
