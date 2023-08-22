@@ -404,12 +404,12 @@ bool gptj_eval(
     struct ggml_cgraph gf = { .n_threads = n_threads };//provided by gpt_params defined in utils.h, being 8 or less by cpu
 
     struct ggml_tensor * embd = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
-    memcpy(embd->data, embd_inp.data(), N*ggml_element_size(embd));//embd_inp is the tensorized representation for all input tokens by gpt_tokenize in utils.h
+    memcpy(embd->data, embd_inp.data(), N*ggml_element_size(embd));//embd_inp is the tensorized representation for all input tokens by gpt_tokenize in utils.h. so embed has the data now
 
     // wte
     //model.wte    = ggml_new_tensor_2d(ctx, wtype, n_embd, n_vocab);
-    //inpL is by integer array indices from embd to modle.wte
-    struct ggml_tensor * inpL = ggml_get_rows(ctx0, model.wte, embd);//still not clear about this calculation. model.wte is just get memery allocation (n_embd*n_vocab*ggml_type_size(wtype); // wte and ggml_new_tensor_2d(ctx, wtype,n_embd, n_vocab);) and contains nothing. why this function constructs 2d tensor using first dimension of wte (n_embd) and embd (embd_inp.size())?
+    //inpL is the combination of input encodings
+    struct ggml_tensor * inpL = ggml_get_rows(ctx0, model.wte, embd);//ggml.c:1986->4001->3657,model.wte is just get memery allocation (n_embd*n_vocab*ggml_type_size(wtype); // wte and ggml_new_tensor_2d(ctx, wtype,n_embd, n_vocab);) and contains nothing. why this function constructs 2d tensor using first dimension of wte (n_embd) and embd (embd_inp.size())?
     //"wpe": [n_ctx, n_embd]
     //"wte": [n_vocab, n_embd]
 
@@ -417,8 +417,8 @@ bool gptj_eval(
         struct ggml_tensor * cur;
 
         // norm
-        {
-            cur = ggml_norm(ctx0, inpL);
+        {//inpL is newly constructed 2d tensor combining emb and wte
+            cur = ggml_norm(ctx0, inpL);//ggml.c:1647，1623
 
             // cur = ln_1_g*cur + ln_1_b
             cur = ggml_add(ctx0,
